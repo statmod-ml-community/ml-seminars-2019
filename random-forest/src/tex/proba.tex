@@ -1,0 +1,547 @@
+% !TEX encoding = windows-1251
+% !TEX program = pdflatex
+\documentclass{beamer}
+\usepackage[english,russian]{babel}
+\usepackage[cp1251]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage{graphicx}
+
+\usepackage{color}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{caption}
+%\usepackage[center]{caption}
+%\usepackage{subfigure}
+\usepackage{listings}
+\usepackage{multirow}
+\usepackage{subcaption}
+\usepackage{bbm}
+\usepackage{mathrsfs}
+\usepackage{tikz}
+
+\usetikzlibrary{positioning}
+
+\newdimen\nodeSize
+\nodeSize=4mm
+\newdimen\nodeDist
+\nodeDist=6mm
+
+\tikzset{
+    position/.style args={#1:#2 from #3}{
+        at=(#3.#1), anchor=#1+180, shift=(#1:#2)
+    }
+}
+
+\definecolor{darkgreen}{rgb}{0.01, 0.75, 0.24}
+
+\setbeamertemplate{navigation symbols}{}
+
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\D}{D}
+\DeclareMathOperator{\E}{E}
+\newtheorem{theorema}{Теорема}
+\newtheorem{lemm}{Лемма}
+%\captionsetup[figure]{position=top}
+%\usepackage{floatrow}
+% Стиль презентации
+%\usetheme[numbers,totalnumbers]{StatMod}
+\usetheme[numbers,totalnumbers,minimal]{Statmod}
+\DeclareMathOperator*{\argmint}{argmin}
+\DeclareMathOperator*{\argmax}{argmax}
+\newcommand{\R}{\mathbb{R}}
+
+\newcommand{\specialcell}[2][c]{%
+  \begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
+
+\title[Решающие деревья. Random Forest]{Решающие деревья. Random Forest}  
+\author[А. Рукавишникова, В. Страшко, М. Сандул]{\vspace{0.5cm} \\
+             Рукавишникова Анна \\
+             Страшко Владислав\\
+             Сандул Михаил 
+              \vspace{1.5cm}}
+%\institute{Санкт-Петербургский государственный университет Прикладная математика и информатика\\ Вычислительная стохастика и статистические модели\\
+% \vspace{0.4cm}
+%    Научный руководитель:   к.ф.-м.н., доцент Алексеева Н. П. \\
+%    Рецензент:  д.ф.-м.н., профессор Кривулин Н. К.
+%    \vspace{0.3cm}}
+    
+\date{Санкт-Петербург\\ 2019 г.} 
+
+\begin{document}
+% Создание заглавной страницы
+%\frame{\titlepage} 
+% Автоматическая генерация содержания
+%\frame{\frametitle{Введение}\tableofcontents} 
+
+%\begin{frame}
+%\begin{tikzpicture}[>=latex,line join=bevel,]
+%%%
+%\node (Moscow) at (5bp,51bp) [draw,ellipse] {Москва};
+%  \node (SPb) at (5bp,5bp) [draw,ellipse] {Санкт-Петербург};
+%  \draw [->] (Moscow) ..controls (5bp,39.554bp) and (5bp,29.067bp)  .. (SPb);
+%%
+%\end{tikzpicture}
+%\end{frame}
+
+\begin{frame}
+  % создаём титульный лист
+  \maketitle
+\end{frame}
+
+\begin{frame}{Кусочно-постоянные функции}
+
+\textbf{Кусочно-постоянной функцией}  $f: \mathbb R^l \rightarrow \mathbb R$, заданной на конечном разбиении $\mathbb R^l = A_1 \vee \ldots \vee A_m$ назовем
+ $$f(x) = \sum_{i=1}^{m}{c_i\mathbbm{1}_{A_i}(x)},$$
+  где $c_i$ ---  различные вещественные числа, $\mathbbm{1}_{A_i}(x)$ ---  индикаторная функция  множества $A_i$.
+
+\vspace{0.2cm}
+Мы будем рассматривать только многомерные прямоугольники в качестве элементов разбиения: такие множества легко задать с помощью системы неравенств.
+
+\end{frame}
+
+\begin{frame}{Кусочно-постоянные функции. Мотивация и свойства}
+
+\begin{itemize}
+\item  Относительно простой  математический объект.
+\item  Удобный инструмент для аппроксимации гладких функций.
+\item  Пространство конечно-постоянных функций линейно.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Представление кусочно-постоянных функций. Определения}
+
+\textbf{Дерево} --- конечный связный ациклический граф с множеством вершин $V$ и выделенной вершиной $v_0 \in V$, в которую не входит ни одно ребро. Вершина $v_0$ называется \textbf{корнем дерева}.
+ 
+\vspace{0.1cm}
+ Вершины, из которых не выходит ни одного ребра, называются \textbf{терминальными} (или \textbf{листами}), остальные вершины называются \textbf{внутренними}.
+ 
+
+\begin{center} 
+ \scalebox{0.86}{
+ \begin{tikzpicture}[
+    node/.style={%
+      draw,
+      rectangle,
+      inner sep=1,
+      outer sep=1,
+      minimum size=\nodeSize,
+      node distance=\nodeDist,
+    },
+  ]
+  \node [node] (n1) {$v_0$};
+  \node [node, position=-120:{\nodeDist} from n1] (n2) {$v_1$};
+  \node [node, position=-60:{\nodeDist} from n1] (n3) {$v_2$};
+  \node [node, position=-120:{\nodeDist} from n3] (n4) {$v_3$};
+  \node [node, position=-60:{\nodeDist} from n3] (n5) {$v_4$};
+
+  \draw [->] (n1) -- (n2);
+  \draw [->] (n1) -- (n3);
+  \draw [->] (n3) -- (n4);
+  \draw [->] (n3) -- (n5);
+\end{tikzpicture}}
+\end{center}
+ 
+\vspace{0.2cm}
+\textbf{Бинарное дерево} --- дерево, из любой внутренней вершины которого выходит ровно два ребра. Они связывают внутреннюю вершину с левой дочерней вершиной $L_v$ и с правой дочерней вершиной $R_v$.
+
+\end{frame}
+
+\begin{frame}{Представление кусочно-постоянных функций}
+
+\begin{lemm} 
+Любую кусочно-постоянную функцию $f(x) = \sum\limits_{i=1}^{m}{c_i \mathbbm{1}_{A_i}(x)}$, заданную на разбиении $\mathbb{R}^l = A_1 \vee \ldots \vee A_m$, состоящем из многомерных прямоугольников, можно представить в виде дерева с конечным числом вершин,
+ во внутренних вершинах которого находятся условия на значения переменных, а в листах --- значения функции $c_i$.
+ \end{lemm}
+ 
+\vspace{0.13cm}
+\begin{block}{Определение}
+Дерево, которое является представлением кусочно-постоянной функции будем называть \textbf{решающим}.
+\end{block}
+
+\vspace{0.13cm}
+\begin{lemm} 
+Любое решающее дерево можно представить в виде бинарного решающего дерева.
+\end{lemm}
+
+\end{frame}
+
+\begin{frame}{Бинарное решающее дерево}
+\begin{figure}[!h]
+\begin{center}
+\includegraphics[width=0.85\linewidth]{bin_class}
+\end{center}
+\caption{Бинарное решающее дерево}
+\label{fig:bin_tree}
+\end{figure}
+
+\begin{itemize}
+\item Каждой внутренней вершине $v$ приписана функция (или предикат) $\beta_v : X \to \{0, 1\}$.
+\item Каждой листовой вершине $v$ приписан прогноз $c_v\in Y$ (в случае с классификацией листу также может быть приписан вектор вероятностей).
+
+\end{itemize}
+\end{frame}
+ 
+\begin{frame}{Постановка задачи}
+Решающие деревья можно применять как для задач регрессии, так и для задач классификации.
+
+\vspace{0.2cm}
+Пусть $X$ --- множество объектов, $Y$ --- множество ответов\\
+$y: X \to Y$ --- неизвестная зависимость.
+
+\vspace{0.2cm}
+%Дано: обучающая выборка --- $(x_1,\ldots,x_n) \subset X,$ \\
+Дано: обучающая выборка --- $X^n = (x_i,y_i)_{i=1}^n $, \\
+$y_i = y(x_i), i = 1,\ldots,n$ --- известные ответы.
+
+%\begin{itemize}
+%\item Классификация ($Y$ --- номинальный признак):\\
+%Задача: найти $a: X \to Y$ --- алгоритм, способный классифицировать произвольный объект $x \in X$.
+%\item Регрессия ($Y$ --- количественный признак):
+%Задача: оценить $f$
+%\end{itemize}
+
+\vspace{0.2cm}
+\begin{itemize}
+\item $y_i \in \{1,\ldots,K\} \Rightarrow$ задача классификации.\\
+\item $y_i \in \R \Rightarrow$ задача регрессии.
+\end{itemize}
+
+\end{frame}
+ 
+\begin{frame}{Решающие деревья в задаче регрессии}
+Пусть $X \in \R^{n\times p}$ --- матрица данных с $p$ признаками для $n$ наблюдений, $Y \in \R^n$ --- вектор ответов.
+
+\vspace{0.1cm} 
+Идея: разбить пространство признаков, т.е. совокупность всех возможных значений $X_1, \ldots, X_p$ на $J$ непересекающихся областей $R_1, \ldots,R_J$ (многомерных прямоугольников). 
+ 
+\vspace{0.1cm} 
+Предсказание для объекта $x$:
+$$f(x) = \sum_{j=1}^Jc_j\mathbbm{1}_{(x \in R_j)}.$$
+
+Области $R_1, \ldots,R_J$ выбираются, исходя из условия:
+\begin{equation*}
+RSS = \sum_{j=1}^J\sum_{i\in R_j}(y_i - f(x_i))^2 \to \min_{R_1,\ldots,R_j}.
+\label{eq:RSS}
+\end{equation*}
+
+Тогда 
+\begin{equation*}
+\hat{c}_j = \frac{1}{|R_j|}\sum\limits_{x_i \in R_j}y_i.
+\label{eq:c_hat}
+\end{equation*}
+
+\end{frame}
+
+\begin{frame}{Решающие деревья в задаче регрессии}
+
+\begin{figure}[!h]
+\begin{center}
+\includegraphics[width=0.8\linewidth]{reg_tree}
+\end{center}
+\caption{Использование решающих деревьев в задачах регрессии}
+\label{fig:reg_tree}
+\end{figure}
+
+\end{frame}
+ 
+\begin{frame}{Решающие деревья в задаче классификации}
+Делаем аналогичное разбиение на области $R_1, \ldots,R_J$, которые выбираются из условия:
+$$E = 1 - \max_k(\hat{p}_{jk}) \to \min_{R_1,\ldots,R_j},$$
+где  $\hat{p}_{jk} = \frac{1}{|R_j|}\sum\limits_{x_i \in R_j}\mathbbm{1}_{(y_i = k)}, \; j = 1,\ldots,J.$
+
+\vspace{0.1cm} 
+На практике чаще всего используют два других (информационных) критерия для фиксированного $j$
+\begin{itemize}
+\item $G = \sum\limits_{k=1}^K \hat{p}_{jk}(1-\hat{p}_{jk})$ --- индекс Джини,
+\item $D = -\sum\limits_{k=1}^K\hat{p}_{jk}\log\hat{p}_{jk}$ --- коэффициент перекрёстной энтропии.
+\end{itemize}
+
+\vspace{0.1cm} 
+Предсказание для объекта $x$:
+$$f(x) = \argmax\limits_{k \in Y}\hat{p}_{jk}.$$
+\end{frame}
+
+\begin{frame}{Решающие деревья в задаче классификации}
+
+\begin{figure}[!h]
+\begin{center}
+\includegraphics[width=0.55\linewidth]{class_tree}
+\end{center}
+\caption{Использование решающих деревьев в задачах классификации}
+\label{fig:class
+_tree}
+\end{figure}
+
+\end{frame}
+
+%\begin{frame}{Жадный алгоритмы построения решающего дерева ID3}
+%\textbf{Алгоритм ID3(U)}
+%
+%\vspace{0.1cm} 
+%Вход: $U \subseteq X^n = (x_i,y_i)_{i=1}^n, Y$ --- признак с $k$ значениями (классами).\\
+%Выход: корневая вершина дерева $v_0$.
+%
+%\begin{enumerate}
+%\item \textcolor{blue}{если} все объекты из $U$ имеют класс $c \in Y$, \textcolor{blue}{то вернуть} новый лист $v$, $c_v := c$;
+%\item найти предикат $\beta_v = [X_j \lessgtr t_j]$ с максимальной информативностью: $\beta = \argmax\limits_{\beta}I(\beta,U)$;
+%\item разбить выборку на две части $U = U_1 \cup U_2$ по предикату $\beta$:\\
+%$U_0 := \{x \in U: \beta(x) = 0\}$;\\
+%$U_1 := \{x \in U: \beta(x) = 1\}$;
+%\item \textcolor{blue}{если} $U_0 = \emptyset$ или $U_1 = \emptyset$, \textcolor{blue}{то вернуть} новый лист $v$, $c_v : =$ мажоритарный класс для $U$;
+%\end{enumerate}
+%\end{frame}
+%
+%\begin{frame}{Алгоритм ID3 (продолжение)}
+%\begin{enumerate}
+%\setcounter{enumi}{4}
+%\item создать новую внутреннюю вершину $v$;\\
+%$\beta_v := \beta$;\\
+%построить левое поддерево: $L_v := ID3(U_0)$;\\
+%построить правое поддерево: $R_v := ID3(U_1)$;\\
+%\item \textcolor{blue}{вернуть} $v$;
+%\end{enumerate}
+%
+%\vspace{0.1cm}
+%\underline{Критерии ветвления}
+%
+%\begin{itemize}
+%\item Критерий Джинни:\\
+%$I(\beta, X^n) =\# \{(x_i,x_j): y_i = y_j \text{ и } \beta(x_i) = \beta(x_j)\}$.
+%\item $D$-критерий:\\
+%$I(\beta,X^n) = \# \{(x_i,x_j): y_i \ne y_j \text{ и } \beta(x_i) \ne \beta(x_j)\}$.
+%\end{itemize}
+%\end{frame}
+%
+%\begin{frame}{Преимущества и недостатки алгоритма ID3}
+%Преимущества
+%\begin{itemize}
+%\item Простота и интерпретируемость классификации.
+%\item Простота реализации.
+%\end{itemize}
+%Недостатки
+%\begin{itemize}
+%\item Жадность. Локально оптимальный выбор предиката $\beta_v$ не является глобально оптимальным. В случае выбора неоптимального предиката алгоритм не спосо­бен вернуться на уровень вверх и заменить неудачный предикат.
+%\item Алгоритм склонен к переобучению --- как правило, он переусложняет структуру дерева.
+%\end{itemize}
+%
+%\vspace{0.5cm}
+%Существует и другие популярные методы построения деревьев: CART, C4.5, C5.0.
+%\end{frame}
+
+\begin{frame}{Жадный алгоритм построения решающего дерева}
+\textbf{Жадный нисходящий алгоритм построения дерева (для задачи регрессии):}
+
+\begin{enumerate}
+\item Выбираем признак $X_j$ и порог $s$ так, чтобы разбиение $X^n$ на $R_1(j,s) = \{x \in X^n | X_j <s\}$ и $R_2(j,s) = \{x \in X^n | X_j \ge s\}$ решало задачу:
+$$\sum\limits_{i: x_i \in R_1(j,s)}\left(y_i - \hat{y}_{R_1}\right)^2 + \sum\limits_{i: x_i \in R_2(j,s)}\left(y_i - \hat{y}_{R_2}\right)^2 \to \min\limits_{j,s},$$
+где $\hat{y}_{R_l} =\frac{1}{|R_l|}\sum\limits_{i: x_i \in R_l(j,s)}y_i,\quad l = 1,2$.
+%\begin{equation*}
+%\resizebox{.95\hsize}{!}{$\sum\limits_{i: x_i \in R_1(j,s)}\left(y_i - \frac{1}{|R_1|}\sum\limits_{l: x_l \in R_1(j,s)}y_l\right)^2 + \sum\limits_{i: x_i \in R_2(j,s)}\left(y_i - \frac{1}{|R_2|}\sum\limits_{l: x_l \in R_2(j,s)}y_l\right)^2$}
+%\end{equation*}
+\item Разбиваем выборку на области $R_1$ и $R_2$, образуя две дочерние вершины.
+\item Повторяем процедуру в пределах каждой получаемой области, пока не выполнится критерий остановки.
+\end{enumerate}
+
+На выходе получаем дерево, в каждом из листов которого содержится по крайней мере $1$ объект исходной выборки $X^n$.
+\end{frame}
+
+\begin{frame}{Критерии остановки}
+
+\begin{itemize}
+\item Ограничение максимальной глубины дерева.
+\item Ограничение минимального числа объектов в листе $n_{min}$.
+\item Ограничение максимального количества листьев в дереве.
+\item Остановка в случае, если все объекты в листе относятся к одному классу.
+\end{itemize}
+
+\vspace{0.3cm}
+\textbf{Проблема:} для очень глубоких деревьев имеем переобучение.
+\end{frame}
+
+\begin{frame}{Стрижка деревьев (pruning tree)}
+\textbf{Цель:} борьба с переобучением за счёт уменьшения дисперсии и увеличения смещения.
+
+\vspace{0.2cm}
+\textbf{Cost-complexity pruning}
+
+\vspace{0.2cm}
+Пусть $T_0$ --- дерево, полученное в результате работы жадного алгоритма, $T^t \subset T_0 $ --- обрезанное в узле $t$ поддерево.
+
+Функция cost-complexity:
+$$Q_{\alpha}(T) = Q(T) + \alpha|l(T)|,$$
+где $Q(T)$ --- training error,  $\alpha \ge 0$ --- параметр (компромисс между размером дерева и его соответствию данным), $|l(T)|$ --- число листьев в поддереве $T$.
+
+%В задаче регрессии (cм. формулы \eqref{eq:RSS}, \eqref{eq:c_hat}):
+%$$Q(T) = \frac{1}{|R_j|}\sum\limits_{x_i \in R_j}(y_i - \hat{c}_j)^2.$$
+%
+%В задаче классификации:
+%$$Q(T) = \sum\limits_{t \in l(T)}Q(t)$$
+
+\vspace{0.2cm}
+Идея: для каждого $\alpha$ найти такое поддерево $T^t \subset T_0$, чтобы минимизировать $Q_{\alpha}(T)$.
+\end{frame}
+
+\begin{frame}{Стрижка деревьев (продолжение)}
+Можно показать, что существует последовательность вложенных деревьев с одинаковыми корнями:
+$$T_K \subset T_{K-1}\subset \ldots \subset T_0,$$
+где каждое дерево $T_i$ минимизирует функцию $Q_{\alpha}(T)$ для $\alpha \in [\alpha_i, \alpha_{i+1})$, причём $0 = \alpha_0 < \alpha_1 < \ldots < \alpha_K < \infty.$
+
+\vspace{0.1cm}
+Выберем $\alpha$ с помощью кросс-валидации и поддерево, соответствующее этому $\alpha$.
+\end{frame}
+
+\begin{frame}{Сравнение деревьев с линейными моделями}
+Модель линейной регрессии:
+\begin{equation}
+f(X) = \beta_0 + \sum\limits_{j=1}^pX_j\beta_j.
+\label{eq:lin_model}
+\end{equation}
+
+
+Модель регрессионного дерева:
+\begin{equation}
+f(X) = \sum_{j=1}^Jc_j\mathbbm{1}_{(X \in R_j)}.
+\label{eq:tree_model}
+\end{equation}
+
+Если зависимость между  $X_1, \ldots, X_p$ и  $Y$ приближённо можно считать линейной, то лучше использовать \eqref{eq:lin_model}, а в случае сложной нелинейной зависимости используем \eqref{eq:tree_model}.
+\end{frame}
+
+\begin{frame}{Сравнение деревьев с линейными моделями}
+
+\begin{figure}[!h]
+\begin{center}
+\includegraphics[width=0.6\linewidth]{linreg_vs_tree}
+\end{center}
+\caption{Примеры решений задач классификации с линейной (верхний ряд) и нелинейной (нижний ряд) зависимостью. В левой части решение с помощью линейной модели, в правой --- с помощью  решающего дерева.}
+\label{fig:linreg_vs_tree}
+
+\end{figure}
+
+\end{frame}
+
+\begin{frame}{Преимущества и недостатки решающих деревьев}
+
+Преимущества:
+\begin{itemize}
+\item простота интерпретации результатов,
+\item пригодность и для задач регрессии, и для задач классификации,
+\item возможность работать с пропущенными данными.
+\end{itemize}
+
+Недостатки:
+\begin{itemize}
+\item склонность к переобучению,
+\item низкая точность прогнозов по сравнению с другими методами машинного обучения.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}{Bagging}
+\textbf{Цель:} уменьшение дисперсии модели с сохранением низкого смещения.
+
+\vspace{0.2cm}
+Идея: пусть $\xi_1, \ldots,\xi_n$ --- н. о. р. с. в., $\D \xi_i =\sigma^2$, тогда $\D \bar{\xi} = \frac{\sigma^2}{n}$.
+
+\vspace{0.2cm}
+Реализация:
+
+$X^n =  (x_i,y_i)_{i=1}^n$ --- обучающая выборка.
+\begin{itemize}
+\item используем bootstrap для генерации $B$ обучающих выборок (отбор с возвращением) $X_b^{*n}, \quad b = 1, \ldots, B$,
+\item на основе полученных выборок строим решающие деревья $\{T_b\}_{b = 1}^B$,
+\item находим оценку:
+\begin{itemize}
+\item в задаче регрессии $\hat{f}_{bag}(x) = \frac{1}{B}\sum\limits_{b=1}^BT_b(x)$,
+\item в задаче классификации с $K$ классами: 
+$\hat{f}_{bag}(x) = [p_1(x), \ldots, p_K(x)]$ --- $K$-мерный вектор, где $p_k(x)$ --- доля деревьев, предсказавших класс $k$ для $x$ 
+%(в качестве предсказания берём $\argmax\limits_k\hat{f}_{bag}(x)$).
+(в качестве предсказания берём $majority\; vote\{\hat{f}_b(x)\}_{b=1}^B$, где $\hat{f}_b(x)$ --- предсказание класса $b$-м решающим деревом.)
+\end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Random forest}
+\textbf{Идея:} уменьшение разброса композиции за счёт уменьшения корреляции базовых алгоритмов.
+
+\vspace{0.2cm}
+\textbf{Алгоритм построения случайного леса}
+
+\begin{enumerate}
+\item строим $B$ bootstrap-выборок $X_b^{*n}, \quad b = 1, \ldots, B$,
+\item на основе $X_b^{*n}$ рекурсивно строим решающее дерево $T_b$, пока не достигнем критерия остановки ($n_{min} = c$) по следующим правилам \textcolor{blue}{для каждого листа}:
+\begin{itemize}
+\item среди $p$ признаков случайным образом выбираются $m$,
+\item повторяем 1 и 2 шаги жадного алгоритма, выбирая признак $X_j$ из имеющихся $m$ и порог $s$.
+\end{itemize}
+\item построенные деревья $\{T_b\}_{b=1}^B$ объединяются в композицию:
+\begin{itemize}
+\item в задаче регрессии: $\hat{f}^B_{rf}(x) = \frac{1}{B}\sum\limits_{b=1}^BT_b(x)$,
+\item в задаче классификации: $\hat{f}^B_{rf}(x) = majority\; vote\{\hat{f}_b(x)\}_{b=1}^B$, где $\hat{f}_b(x)$ --- предсказание класса $b$-м решающим деревом.
+\end{itemize}
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Оценка ошибки out-of-bag}
+
+Дерево, обученное по bootstrap-выборке, использует приблизительно $2/3$ полной выборки $\Rightarrow$ оставшуюся $1/3$ выборки используем для оценки обобщающей способности.
+
+\vspace{0.2cm}
+Оценка качества случайного леса из $B$ деревьев в рамках подхода out-of-bag:
+$$OOB = \sum\limits_{i = 1}^N L\left(y_i, \frac{1}{\sum\limits_{b=1}^B[x_i \notin X_b^{*n}]}\sum\limits_{b=1}^B[x_i \notin X_b^{*n}]T_b(x_i)\right).$$
+\end{frame}
+
+\begin{frame}{Почему работают bagging и random forest?}
+
+Пусть $L(y) = (f(x) - y)^2$ --- квадратичная функция потерь, $X^n = (x_i,y_i)_{i = 1}^n \sim p(x,y)$, $\mu$ --- метод обучения.
+
+
+Среднеквадратический риск:
+$$\E_{x,y}(f(x)-y)^2 = \int\limits_X\int\limits_YL(y)p(x,y)dxdy.$$
+
+Минимум среднеквадратического риска:
+$$f^* = \E(y|x)=\int\limits_Yyp(y|x)dx.$$
+
+Мера качества обучения $\mu$:
+$$Q(\mu) = \E_{X^n}\E_{x,y}(\mu(X^n)(x) - y)^2,$$
+где $\mu(X^n)(x)$ --- результат применения алгоритма, построенного по выборке $X^n$, к объекту $x$. 
+
+\end{frame}
+
+\begin{frame}{Bias–variance decomposition}
+\begin{theorema}
+В случае квадратичной функции потерь для любого $\mu$
+\begin{eqnarray*}
+Q(\mu) = \underbrace{\E_{x,y}(f^*(x)-y))^2}_\text{шум (noise)} + \underbrace{\E_{x,y}(\bar{f}(x) - f^*(x))^2}_\text{смещение (bias)} +  \\ + \underbrace{\E_{x,y}\E_{X^n}(\mu(X^n)(x)-\bar{f}(x))^2}_\text{разброс (variance)},
+\end{eqnarray*}
+где $\bar{f}(x) = \E_{X^n}(\mu(X^n)(x)).$
+\end{theorema}
+\end{frame}
+
+\begin{frame}{Смещение и разброс композиции алгоритмов}
+Пусть $b_t, \; t = 1,\ldots,T$ --- базовые алгоритмы, обучающиеся по случайным подвыборкам, 
+$f_T(x) = \frac{1}{T}\sum\limits_{t=1}^Tb_t(x)$ --- композиция алгоритмов.
+
+
+Смещение композиции совпадает со смещением базового алгоритма:
+$$bias = \E_{x,y}(\E_{X^n}b_t(x) - f^*(x))^2.$$
+
+
+Разброс состоит из дисперсии и ковариации:
+\begin{eqnarray*}
+variance = \frac{1}{T}\E_{x,y}\E_{X^n}(b_t(x) - \E_{X^n}b_t(x))^2 + \\
++\frac{T-1}{T}\E_{x,y}\E_{X^n}(b_t(x) - \E_{X^n}b_t(x))(b_s(x) - \E_{X^n}b_s(x)).
+\end{eqnarray*}
+
+\vspace{0.2cm}
+Таким образом, чем меньше коррелируют базовые алгоритмы, тем более эффективна их композиция.
+\end{frame}
+
+
+\end{document}
