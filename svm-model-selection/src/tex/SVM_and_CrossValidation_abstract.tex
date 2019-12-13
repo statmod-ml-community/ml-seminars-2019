@@ -1,0 +1,510 @@
+\documentclass[12pt]{article}
+\usepackage[T2A]{fontenc}
+\usepackage[cp1251]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{graphicx, float}
+\usepackage{latexsym,amssymb,amsthm}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+
+\usepackage{wrapfig}
+
+\usepackage{amsthm}
+\usepackage{bm}
+\usepackage{bbold}
+\newtheorem{result}{Утверждение}
+\newtheorem{remark}{Предложение}
+\newtheorem{theorem}{Теорема}
+\newtheorem{theorem+}{Теорема Гаусса-Маркова}
+\newtheorem{theoremCT}{Теорема Куна-Таккера}
+\DeclareMathOperator{\E}{E} 
+\DeclareMathOperator{\T}{T} 
+\DeclareMathOperator{\D}{D} 
+
+
+\DeclareMathOperator{\w}{\mathsf{w}} 
+
+
+%\title[Обучение с учителем. SVM. Кросс-валидация.]{Обучение с учителем. Метод опорных векторов. Выбор модели с помощью кросс-валидации.}
+%\author[И. Лунев, М. Высоков, М. Петраков]{Лунев Иван, Высоков Максим, Петраков Михаил}
+%\institute[СПбГУ]{Санкт-Петербургский государственный университет \\
+%	Прикладная математика и информатика \\
+%	Кафедра статистического моделирования\\ 
+%}
+%\date{
+%	Санкт-Петербург\\
+%	2019г.
+%}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\section{Обучение с учителем. Постановка задачи}
+Пусть $\mathsf{X}$ --- множество объектов, $\mathsf{Y}$ --- множество ответов, и $\mathsf{y}: \mathsf{X}\to \mathsf{Y}$ --- неизвестная зависимость (target function).
+
+Располагаем обучающей выборкой --- $\mathsf{(x_1,\ldots, x_n) \subset X}$, где $\mathsf{y_i=y(x_i), ~i=1,\ldots,n}$ --- известные ответы.
+Требуется найти $\mathsf{a:X\to Y}$ --- функцию (decision function), приближающую $\mathsf{y}$ на всем множестве $\mathsf{X}$.
+
+Вероятностная постановка задачи: имеется неизвестное распределение на множестве $\mathsf{X\times Y}$ с плотностью $\mathsf{p(x,y)}$, из которого случайно выбираются $\mathbb{X}_\mathsf{n}=\mathsf{(x_i,y_i)_{i=1}^n}$ (независимые). 
+
+Виды задач классификации: 
+\begin{itemize}
+	\item $\mathsf{Y}=\{-1,+1\}$ --- классификация на 2 класса;
+	\item $\mathsf{Y}=\{1,\ldots,K\}$ --- классификация на $K$ классов. 
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Задача построения разделяющей поверхности}
+
+
+Задача классификации с двумя классами $Y=\{-1,+1\}$ выглядит следующим образом:\newline
+по обучающей выборке $X^n=(x_i,y_i)_{i=1}^n$ построить алгоритм классификации $a(x,\w)=\textrm{sign} f(x,\w)$,
+где $f(x,\w)$ --- разделяющая (дискриминантная) функция, $\w$ --- вектор параметров.
+
+	
+Термины:
+\begin{itemize}
+	
+\item	$f(x,\w)=0$ --- разделяющая поверхность;
+	
+\item	$M_i(\w)=y_if(x_i,\w)$ --- отступ (margin) объекта $x_i$;
+	
+\item	$M_i(\w)<0 \Leftrightarrow$  алгоритм $a(x,\w)$ ошибается на $x_i$.
+
+\end{itemize}	
+	
+	
+Разделяющая поверхность строится таким образом, чтобы минимизировать эмпирический риск:
+	\begin{equation*}
+		Q(\w)=\sum_{i=1}^{n}[M_i(\w)<0]\leq \tilde{Q}(\w)=\sum_{i=1}^{n}\mathcal{L}(M_i(\w))\to \min \limits_{\w},
+	\end{equation*}
+где функция потерь $\mathcal{L}(M_i(\w))$ невозрастающая и неотрицательная.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Непрерывные аппроксимации пороговой функции потерь}
+\begin{figure}[H]
+\centering
+	\includegraphics[scale=0.5]{pics/loss_functions.png}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Задача обучения лин. классификатора}
+
+
+Дано:
+\begin{itemize}
+	\item Обучающая выборка $X^n = (x_i, y_i)_{i=1}^n$ 
+	\item $x_i$ --- объекты, векторы из множества $X=\mathbb{R}^n$
+	\item $y_i$ --- метки классов, элементы множества  $Y   =\{-1,1\}$
+\end{itemize}
+Найти:\newline
+параметры $\w \in \mathbb{R}^p, \w_0 \in \mathbb{R}$ линейной модели классификации
+\begin{equation*}
+a(x;\w,\w_0)=\textrm{sign}(<x,\w>-\w_0).
+\end{equation*}
+
+Критерий --- минимизация эмпирического риска:\newline
+\begin{equation*}
+\sum_{i=1}^{n}[a(x_i;\w,\w_0)\neq y_i]= \sum_{i=1}^{n}[M_i(\w,\w_0)<0] \to  \min \limits_{\w, \w_0},
+\end{equation*}
+
+где $M_i(\w,\w_0)=(<x,\w>-\w_0)y_i$ --- отступ (margin) объекта $x_i$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Аппроксимация и регуляризация эмперического риска}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.5]{pics/Emp_risk.png}
+\end{figure}
+
+При кусочно-линейной аппроксимации функции потерь:
+\begin{equation*}
+Q(\w,\w_0)=\sum_{i=1}^{n}[M_i(\w,\w_0)<0]\leq\sum_{i=1}^{n}(1-M_i(\w,\w_0))_++\frac{1}{2C}||\w||^2 \to \min \limits_{\w,\w_0}
+\end{equation*}
+
+\textbf{Аппроксимация} штрафует объекты за приближение к границе классов, увеличивая зазор между классами
+
+\textbf{Регуляризация} штрафует неустойчивые решения в случае мультиколлинеарности
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Оптимальная разделяющая гиперплоскость}
+
+\textbf{Линейный классификатор} : $a(x,\w)=\textrm{sign}(<x,\w>-\w_0)$
+
+Пусть выборка $X^n=(x_i,y_i)_{i=1}^n линейна разделима:$
+\begin{equation*}
+\exists \w,\w_0: M_i(\w,\w_0)=(<x,\w>-\w_0)y_i>0, i=1\ldots n.
+\end{equation*}
+
+\textbf{Нормировка}: $\min \limits_{i=1,\ldots,n}M_i(\w,\w_0)=1$.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.5]{pics/Opt_hyp.png}
+\end{figure}
+
+\textbf{Разделяющая полоса} (разделяющая гиперплоскость посередине):
+$$
+{x: -1 \leq <x,\w> - \w_0 \leq 1}
+$$
+$$
+\exists x_{+}: <x_{+},\w> - \w_0 = 1
+$$
+$$
+\exists x_{-}: <x_{-},\w> - \w_0 = -1
+$$
+
+\textbf{Ширина полосы:}
+$$
+\frac{<x_{+}-x_{-},\w>}{||\w||}=\frac{2}{||\w||}\to \max
+$$
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Обоснование кусочно-линейной функции потерь}
+
+\textbf{Линейно разделимая выборка}: 
+
+\begin{equation*}
+\begin{cases}
+\frac{1}{2} ||\w||^2 \to \min \limits_{\w, \w_0};\\
+M_i(\w,\w_0)\geq1, & i=1,\ldots,n
+\end{cases}
+\end{equation*}
+
+\textbf{Переход к линейно неразделимой выборки}: 
+
+\begin{equation*}
+\begin{cases}
+\frac{1}{2} ||\w||^2 + C\sum_{i=1}^{n} \xi_i \to \min \limits_{\w, \w_0, \xi};\\
+M_i(\w,\w_0)\geq1 - \xi_i, & i=1,\ldots,n;\\
+\xi_i \geq 0,  \quad i=1,\ldots,n.
+\end{cases}
+\end{equation*}
+
+\textbf{Эквивалентная задача безусловной минимизации}:
+
+\begin{equation*}
+C\sum_{i=1}^{n}(1-M_i(\w,\w_0))_++\frac{1}{2} ||\w||^2 \to \min \limits_{\w, \w_0, }.
+\end{equation*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Влияние константы C на решение SVM}
+
+SVM --- аппроксимация и регуляризация эмпирического риска:
+
+$$
+\sum_{i=1}^{n}(1-M_i(\w,\w_0))_++\frac{1}{2C}||\w||^2 \to \min \limits_{\w,\w_0}.
+$$
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.5]{pics/SVM_C_param.png}
+\end{figure}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Напоминание. Условия Каруша-Куна-Таккера}
+
+\textbf{Задача математического программирования}: 
+
+\begin{equation*}
+\begin{cases}
+f(x) \to  \min \limits_{x}\\
+g_i(x)\leq 0, \quad i=1,\ldots,m;\\
+h_j(x)= 0, \quad i=1,\ldots,k;
+\end{cases}
+\end{equation*}
+
+Необходимые условия. Если $x$ --- точка локального минимума, то существуют множители $\mu_i$, $i=1,\ldots,k$, $\lambda_j$, $j=1,\ldots,k$:
+
+\begin{equation*}
+\begin{cases}
+\frac{\partial \mathcal{L}}{\partial x}=0, \quad \mathcal{L}(x;\mu,\lambda) = f(x)+\sum_{i=1}^{m}\mu_i g_i(x)+\sum_{j=1}^{k}\lambda_j h_j(x);\\
+g_j(x)\leq 0; h_j(x)=0; \quad \text{(исходные ограничения)}\\
+\mu_i \geq 0; \text{ (двойственные ограничения)}\\
+\mu_ig_j(x)=0.\text{ (условия дополняющей нежесткости)}
+\end{cases}
+\end{equation*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Применение условий ККТ к задаче SVM}
+
+\textbf{Функция Лагранжа}: 
+$$
+\mathcal{L}(\w,\w_0, \xi; \lambda, \mu) = \frac{1}{2} ||\w||^2  - \sum_{i=1}^{n}\lambda_i(M_i(\w,\w_0)-1)-\sum_{i=1}^{n}\xi_i(\lambda_i+\mu_i-C),
+$$
+
+$\lambda_i$ --- переменные, двойственные к ограничениям $M_i \geq 1 - \xi_i;$
+
+$\mu_i$ --- переменные, двойственные к ограничениям $\xi_i \geq 0.$
+
+\begin{equation*}
+\begin{cases}
+\frac{\partial \mathcal{L}}{\partial \w}=0, \frac{\partial \mathcal{L}}{\partial\w_0}=0, \frac{\partial \mathcal{L}}{\partial \xi}=0;\\
+\xi_i\geq 0, \quad \lambda_i \geq 0, \quad \mu_i \geq 0, \quad i=1,\ldots,n;\\
+\lambda_i = 0 \text{ либо } M_i(\w,\w_0)=1-\xi_i,\quad i=1,\ldots,n;\\
+\mu_i = 0 \text{ либо } \xi_i=0,\quad i=1,\ldots,n.
+\end{cases}
+\end{equation*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Необходимые условия седловой точки Лагранжа}
+
+\textbf{Функция Лагранжа}: 
+$$
+\mathcal{L}(\w,\w_0, \xi; \lambda, \mu) = \frac{1}{2} ||\w||^2  - \sum_{i=1}^{n}\lambda_i(M_i(\w,\w_0)-1)-\sum_{i=1}^{n}\xi_i(\lambda_i+\mu_i-C),
+$$
+
+\textbf{Необходимые условия седловой точки Лагранжа}: 
+
+\begin{align*}
+&\frac{\partial \mathcal{L}}{\partial \w}=\w-\sum_{i=1}^{n}\lambda_iy_ix_i=0 & \Longrightarrow & \quad\quad w=\sum_{i=1}^{n}\lambda_iy_ix_i;\\
+&\frac{\partial \mathcal{L}}{\partial \w_0}=-\sum_{i=1}^{n}\lambda_iy_=0 & \Longrightarrow & \quad\quad \sum_{i=1}^{n}\lambda_iy_i=0;\\
+&\frac{\partial \mathcal{L}}{\partial \xi_i}=-\lambda_i-\mu_i+C=0 & \Longrightarrow & \quad\quad \lambda_i+\mu_i=C, \quad i=1,\ldots,n.
+\end{align*}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Понятие опорного вектора}
+
+\textbf{Типизация объектов}: 
+
+\begin{itemize}
+	\item $\alpha_i=0$; $\mu_i=C$; $\xi_i=0$; $ M_i\geq1$ --- периферийные (неинформативные) объекты;
+	
+	\item $0<\alpha_i<C$; $0<\mu_i<C$; $\xi_i=0$; $ M_i=1$ --- опорные граничные объекты;
+	
+	\item $\alpha_i=C$; $\mu_i=0$; $\xi_i>0$; $ M_i<1$ --- опорные-нарушители.
+\end{itemize}
+
+	Объект $x_i$ называется \it{опорным}, если $\lambda_i \neq 0$.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Двойственная задача}
+
+\begin{equation*}
+\begin{cases}
+	-\mathcal{L}(\lambda)=-\sum_{i=1}^{n}\lambda_i+\frac{1}{2}\sum_{i=1}^{n}\sum_{j=1}^{n}\lambda_i\lambda_jy_iy_j<x_i,x_j> \to \min \limits_{\lambda};\\
+	0\leq\lambda_i\leq C \quad i=1,\ldots,n;\\
+	\sum_{i=1}^{n}\lambda_iy_i=0.
+\end{cases}
+\end{equation*}
+
+
+Решение прямой задачи выражается через решение двойственной:
+
+\begin{equation*}
+\begin{cases}
+\w=\sum_{=1}^{n}\lambda_iy_ix_i;\\
+\w_0=<\w_0,x_i>-y_i, \text{ для любого i: }\lambda_i>0, M_i=1.
+\end{cases}
+\end{equation*}
+
+Линейный классификатор:
+$$
+a(x)=\textrm{sign}\left(\sum_{i=1}^{n}\lambda_iy_i<x_i,x>-\w_0\right).
+$$
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Нелинейное обобщение SVM}
+
+Переход к спрямляющему пространству более высокой размерности: $\psi: X \to H$.
+
+	Функция $K: X \times X \to \mathbb{R}$ --- \it{ядро}, если $K(x,x{'})=<\psi(x),\psi(x{'})>$ при некотором $\psi: X  \to H$, где $H$ --- гильбертово пространство.
+
+\begin{theorem}
+	Функция $K(x,x{'})$ является ядром тогда и только тогда, когда она симметрична: $K(x,x{'})=K(x{'},x)$; и неотрицательно определена:
+	$$
+	\int_{X}\int_XK(x,x{'})g(x)g(x{'})dxdx^{'} \geq 0 \text{ для людой }g: X \to \mathbb{R}.
+	$$
+\end{theorem}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Конструктивные методы синтеза ядер}
+
+\begin{enumerate}
+	\item $K(x,x')=<x,x'>$ --- ядро; 
+	
+	\item константа $K(x,x')=1$ --- ядро;
+	
+	\item произведение ядер $K(x,x')=K_1(x,x')K_2(x,x')$ --- ядро;
+	
+	\item $\forall \psi X \to \mathbb{R}$ произведение $K(x,x')=\psi(x),\psi(x')$ --- ядро;
+	
+	\item $K(x,x')=\alpha_1K_1(x,x')+\alpha_2K_2(x,x')$ при $\alpha_1, \alpha_2 >0 $ --- ядро;
+	
+	\item $\forall \phi: X \to X$ если $K_0$ ядро, то $K(x,x')=K_0(\phi(x),\phi(x'))$ --- ядро;
+	
+	\item если $s: X \times X \to \mathbb{R}$ --- симметричная интегрируемая функция, то $K(x,x') = \int_{X}s(x,z)s(x',z)dz$ --- ядро;
+	
+	\item если $K_0$ --- ядро и функция $f: \mathbb{R} \to \mathbb{R}$ представима в виде сходящегося степенного ряда с неотрицательными коэффициентами, то $K(x,x')=f(K_0(x,x'))$ --- ядро.
+\end{enumerate}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Примеры ядер}
+
+\begin{enumerate}
+	\item $K(x,x')=<x,x'>^2$ --- квадратичное ядро; 
+	
+	\item $K(x,x')=<x,x'>^d$ --- полиномиальное ядро с мономами степени $d$; 
+	
+	\item $K(x,x')=(<x,x'>+1)^d$ --- полиномиальное ядро с мономами степени $\leq d$; 
+	
+	\item $K(x,x')=\sigma(<x,x'>)$ --- нейросеть с заданной функцией активации $\sigma(z)$ (не для всех $\sigma$  является ядром); 
+	
+	\item $K(x,x')=th(k_1<x,x'>-k_0), k_0,k_1\geq 0$ --- нейросеть с сигмоидными функциями активации; 
+	
+	\item $K(x,x')=exp(-\gamma ||x-x'||^2)$ ---сеть радиальных базисных функций (RBF ядро).
+\end{enumerate}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Классификация с различными ядрами}
+
+Гиперплоскость в спрямляющем пространстве соответствует нелинейной разделяющей поверхности в исходном.
+ 
+Примеры с различными ядрами $K(x,x')$
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.5]{pics/Kernels.png}
+\end{figure}
+
+\section{Мультиклассовая SVM}
+
+Для обобщения метода на случай нескольких классов используют одну из двух стратегий: <<one-against-one>> или <<one-vs-th-rest>>. Пусть $N$ --- число классов. Тогда в первом случае будет построено $N(N-1)/2$ классификаторов, каждый из которых натренирован лишь на двух классах. Такую стратегию использует метод svm.SVC() из библиотеки scikit-learn. Во втором случае очевидно строится $N$ классификаторов, каждый из которых отделяет один класс от всех остальных. Такая стратегия реализована в методе svm.LinearSVC().
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{SVM как двухслойная нейронная сеть}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.5]{pics/NN.png}
+\end{figure}
+
+Перенумеруем объекты там, чтобы $x_1, \ldots, x_h$ были опорными.
+
+$$
+a(x)=\textrm{sign}\left(\sum_{i=1}^{h}\lambda_iy_iK(x,x_i)-\w_0
+\right).
+$$
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.5]{pics/SVM_NN.png}
+\end{figure}
+
+Первый слой вместо скалярных произведений вычисляет ядра.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Преимущества и недостатки SVM }
+
+Преимущества SVM:
+\begin{itemize}
+	\item Задача выпуклого квадратичного программирования имеет единственное решение; 
+	
+	\item Число нейронов скрытого слоя определяется автоматически --- это число опорных векторов.
+	
+\end{itemize}
+
+Недостатки SVM:
+\begin{itemize}
+	\item Неустойчивость к шуму; 
+	
+	\item Нет общий подходов к оптимизации $K(x,x')$ под задачу; 
+	
+	\item Приходится подбирать константу $C$; 
+	
+	\item Нет отбора признаков.
+	
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Cross-validation}
+
+Дано:
+\begin{itemize}
+	
+	\item Имеется выборка (${X}_n$, ${Y}_n$);
+	
+	\item Умеем строить модель, зависящую от параметра $\theta$ и минимизирующую ошибку $J(X_n,Y_n; \theta, \lambda)$, где $\lambda$ --- параметр регуляризации; 
+	
+\end{itemize}
+
+
+Хотим подобрать такой параметр $\theta_0$, чтобы минимизировать ошибку $J({X}_{new},{Y}_{new};\theta_0,0)$ на новых индивидах.
+
+Алгоритм:
+\begin{itemize}
+	\item Делим выборку (${X}_n$, ${Y}_n$) случайным образом на три набора: (${X}_{train}$, ${Y}_{train}$), (${X}_{CV}$, ${Y}_{CV}$) и (${X}_{test}$, ${Y}_{test}$) ; 
+	
+	\item Перебираем набор параметров ${\lambda_1,\ldots,\lambda_m}$; 
+	
+	\item Для каждого параметра $\lambda_i$ строим модель на ($\mathsf{X}_{train}$, ${Y}_{train}$) (то есть находим оптимальное $\theta_{i0}$) и считаем ошибку на $J(X_{CV},Y_{CV};\theta_{i0}, 0)$; 
+	
+	\item Берем $\lambda_0$ c минимальной ошибкой (ему соответствует $\theta_0$);
+	
+	\item Считаем ошибку модели  $J(X_{test},Y_{test};\theta_{0},0)$.
+	
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{K-fold Cross-validation}
+
+Основные условия, как в предыдущей секции.
+
+Алгоритм:
+\begin{itemize}
+	\item Делим выборку (${X}_n$, ${Y}_n$) случайным образом на $K$ частей: (${X}_1$, ${Y}_1$),...,(${X}_K$, ${Y}_K$)  ; 
+	
+	\item Обозначим за (${X}_k'$, ${Y}_k'$) набор, содержащий всех индивидов, кроме (${X}_k$, ${Y}_k$);
+	
+	\item Перебираем набор параметров ${\lambda_1,\ldots,\lambda_m}$; 
+	
+	\item Для каждого параметра $\lambda_i$ считаем 
+	$$
+	CV_i=\sum_{j=1}^{K}\frac{n_j}{n} J({X}_j,{Y}_j;\theta_j,0),
+	$$
+	где $\theta_j$ минимизирует $J({X}_j',{Y}_j';\theta,\lambda_i)$, $n_j$ --- число индивидов в (${X}_j$, ${Y}_j$);
+	
+	\item Берем $\lambda_0$ c минимальной ошибкой $CV_i$;
+	
+	\item Берем $\theta_{0}$, которое минимизирует  $J(X_{n},Y_{n};\theta,\lambda_0)$.
+	
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\end{document}
