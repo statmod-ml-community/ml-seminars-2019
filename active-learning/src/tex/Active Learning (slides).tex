@@ -1,0 +1,214 @@
+\documentclass[pdf, 9pt,intlimits, unicode]{beamer}
+\usepackage[T2A]{fontenc}       %поддержка кириллицы
+\usepackage[cp1251]{inputenc}   %пока бибтех не дружит до конца с юникодом
+\usepackage[russian]{babel}     %определение языков в документе
+\usepackage{amssymb,amsmath}    %математика
+\usepackage{float}
+\usepackage{hhline}
+\usepackage{multicol}
+\usepackage{caption}
+\usepackage{subfigure}
+\usepackage{mathrsfs}
+
+% Тема презентации
+\usetheme[numbers, totalnumbers, nonav]{Statmod}
+\usepackage{diagbox}
+% Привычный шрифт для математических формул
+\usefonttheme[onlymath]{serif}
+
+% Более крупный шрифт для подзаголовков титульного листа
+\setbeamerfont{institute}{size=\normalsize}
+
+\newenvironment<>{varblock}[2][.9\textwidth]{%
+	\setlength{\textwidth}{#1}
+	\begin{actionenv}#3%
+		\def\insertblocktitle{#2}%
+		\par%
+		\usebeamertemplate{block begin}}
+	{\par%
+		\usebeamertemplate{block end}%
+\end{actionenv}}
+
+%Задание команды (\bluetext) для выделения конкретным (синим) цветом
+%(используйте \alert для выделения цветом выбранной "темы")
+\setbeamercolor{bluetext_color}{fg=blue}
+\newcommand{\bluetext}[1]{{\usebeamercolor[fg]{bluetext_color}#1}}
+\newtheorem{MCMC}{Предложение [Tierney, 1994]}
+\newtheorem{MML}{Функция маргинального правдоподобия}
+\newtheorem{inconsistency}{Предложение [Ghosh, 1995]}
+\newtheorem{JML}{Функция правдоподобия вектора ответов}
+\newtheorem{sufficient}{Свойство модели}
+\newtheorem{betas}{Cвойства $\hat{\beta}_{CML}$ [Andersen, 1970]}
+\newtheorem{thetas}{Оценивание параметра способности}
+\newtheorem{task}{s-я итерация}
+\newtheorem{fulllikelihood}{Функция правдоподобия полных данных}
+\newtheorem{observedlikelihood}{Функция правдоподобия матрицы данных}
+\title[Активное обучение]{Активное обучение}
+\author[Понизова В., Федяев И.]{Понизова Вероника Сергеевна \\ Федяев Игорь Павлович}
+
+\institute{
+	Санкт-Петербургский Государственный Университет \\
+	Прикладная математика и информатика \\
+	Статистическое моделирование. \\
+		\vspace{0.5cm}}
+
+\date{
+	Санкт-Петербург\\
+	2019г.
+}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}\frametitle{Постановка задачи}
+Пусть $\mathcal{X}$ --- множество объектов, $\mathcal{Y}$ --- множество ответов, \\		
+$y: \mathcal{X} \rightarrow \mathcal{Y}$ --- неизвестная зависимость.
+
+%\textbf{Дано}: \begin{itemize}
+%	\item начальная размеченная выборка $X^l = (x_i, y_i)_{i = 1}^l$;
+%	\item объекты $(x_{l+1}, \dots, x_{l+k}) \subset X$, на которых ответы неизвестны.
+%\end{itemize} 
+ \ \\ 
+\textbf{Задача}: найти функцию $a: \mathcal{X} \rightarrow \mathcal{Y}$, приближающую $y$ на всем множестве $\mathcal{X}$ (обучить предсказательную модель), когда в выборке есть неразмеченные объекты, 	при условии, что получение ответов $y_i$ стоит дорого. \\ \ \\
+
+\textbf{Примеры:}
+\begin{itemize}
+	\item сбор асессорских данных для информационного поиска структурно сложных объектов;
+	\item планирование экспериментов в естественных науках (комбинаторная химия);
+	\item оптимизация трудновычислимых функций (поиск в пространстве гиперпараметров);
+	\item управление ценами и ассортиментами в торговых сетях.
+\end{itemize}
+
+\end{frame}
+\begin{frame} \frametitle{Постановка задачи}
+\textcolor{blue}{\textbf{Вход:}} начальная размеченная выборка $X^l = (x_i, y_i)_{i = 1}^l$; \\ 
+\textcolor{blue}{\textbf{Выход:}} модель $a$ и размеченная выборка $(x_i, y_i)_{i = 1}^{l+k} = X^k \cup X^l$; \\
+Cхема: обучить модель $a$ по начальной выборке $(x_i, y_i)_{i=1}^l$; \\
+\textcolor{blue}{\textbf{пока}} остаются неразмеченные объекты $x_{l+1}, \dots, x_{l+k}$:
+\begin{enumerate}
+	\item выбрать неразмеченный объект $x_i$;
+	\item узнать для него ответ $y_i$ (спросить у <<оракула>>);
+	\item дообучить модель $a$ ещё на одном примере $(x_i, y_i).$
+\end{enumerate}
+ \ \\ \ \\ 
+\textbf{Цель:} за фиксированное число запрошенных у оракула ответов $k$ достичь как можно лучшего качества модели. \\ \ \\
+\textbf{Примеры ситуаций, где применимо активное обучения:}
+\begin{itemize}
+	\item Отбор объектов из пула: какой следующий $x_i$ выбрать из множества $X^k$ ?
+	\item Синтез объектов: на каждой $i$--м шаге строить оптимальный объект $x_i$;
+	\item Отбор объектов из потока: для каждого приходящего $x_i$ решать, стоит ли узнавать $y_i$.
+\end{itemize}
+\end{frame}
+\begin{frame}\frametitle{Постановка задачи} 
+Функционал качества модели $a(x, \theta)$ с параметром $\theta$:
+\begin{equation*}
+\sum_{i = 1}^{l + k} C_i \mathscr{L}(\theta; x_i, y_i) \rightarrow \underset{\theta}{\min},
+\end{equation*}
+где $\mathscr{L}$ --- функция потерь, $C_i$ --- стоимость информации $y_i$.\\ \ \\
+
+\textbf{Пример: } в планировании эксперимента в естественных науках для получения ответа оракула необходимо провести ту или иную реакцию, реакции имеют разные сложности $\Rightarrow$ величина $C_i$ непосредственно зависит от этой сложности.
+\end{frame}
+
+\begin{frame} \frametitle{Почему активное обучение быстрее пассивного: пример}
+Рассмотрим задачу с пороговым классификатором: 
+$x_i \sim U(-1, 1), \quad y_i = [x_i > 0], \quad a(x, \theta) = [x > \theta].$
+\\ \ \\ Оценим число шагов для определения $\theta$ с точностью $1/k$:
+
+\begin{itemize}
+	\item наивная стратегия: на каждом шаге выбирать $x_i \sim U(X^k)$, трудоемкость --- $O(k)$
+	\item бинарный поиск: выбирать $x_i$, ближайший к середине зазора между классами $\frac{1}{k} \left( \underset{y_j = 0}{\max} (x_j) + \underset{y_j = 1}{\min} (x_j)\right)$, трудоемкость $O(\log k)$.
+\end{itemize}
+\begin{figure}[h]
+	{\includegraphics[width=250pt, height=50pt]{binsearch.png}}
+\end{figure}
+\end{frame}
+
+\begin{frame} \frametitle{Сэмплирование по неуверенности (uncertainty sampling)}
+Задача многоклассовой классификации:
+\begin{equation*}
+a(x) = \arg \underset{y \in Y}{\max} \text{ }\mathrm{P} (y | x).
+\end{equation*}
+
+\textbf{Идея:} выбирать $x_i$ с наибольшей неопределенностью $a(x_i)$.
+
+Для всех $x \in X^k$ обозначим $p_j(x)$, $j = 1, \dots, |Y|$ --- ранжированные по убыванию вероятности $P(y|x)$, $y \in Y$.
+\begin{itemize}
+\item Принцип наименьшей достоверности (least confidence):
+\begin{equation*}
+x_i = \arg \underset{u \in X^k}{\min} p_1(u).
+\end{equation*}	
+\item Принцип наименьшей разности отступов (margin sampling):
+\begin{equation*}
+x_i = \arg \underset{u \in X^k}{\min} (p_1(u) - p_2(u)).
+\end{equation*}	
+\item Принцип максимума энтропии (maximum entropy):
+\begin{equation*}
+x_i = \arg \underset{u \in X^k}{\min} \sum_{j = 1}^{|Y|}p_j(u) \ln p_j(u).
+\end{equation*}
+\end{itemize}
+\end{frame}
+\begin{frame} \frametitle{Сэмплирование по несогласию в комитете (query by committee)}
+\textbf{Идея:} выбирать $x_i$ с наибольшей несогласованностью комитета моделей $a_t(x_i) = \arg \underset{y \in Y}{\max}\text{ }P_t(y|x),$ $t = 1, \dots, T$.	
+
+\begin{itemize}
+	\item Принцип максимума энтропии: выбираем $x_i$, на котором $a_t(x_i)$ дают максимально различные ответы:
+	\begin{equation*}
+	x_i = 	 \arg \underset{u \in X^k}{\min} \sum_{y \in Y} \hat{p}(y|u) \ln \hat{p}(y|u), 
+	\end{equation*}
+	где $\hat{p}(y|u) = \frac{1}{T} \sum_{t=1}^{T}[a_t(u) = y].$
+	\item Принцип максимума средней KL--дивергенции:
+	выбираем $x_i$, на котором $P_t(y|x_i)$ максимально различны: 
+	\begin{equation*}
+	x_i = \arg \underset{u \in X^k}{\max} \sum_{t=1}^{T} \text{KL} (P_t(y|u) || \bar{P}(y|u)), 
+	\end{equation*}
+	где $\bar{P}(y|u) = \frac{1}{T} \sum_{t = 1}^T P_t(y|u)$ --- консенсус комитета.
+\end{itemize}
+Напоминание: KL$(q||p) = - \int q(x) \log \frac{p(x)}{q(x)} dx$.
+\end{frame}
+\begin{frame} \frametitle{Ожидаемое изменение модели (expected model change)}
+
+Параметрическая модель многоклассовой классификации: 	
+\begin{equation*}
+a(x, \theta) = \arg \underset{y \in Y}{\max}\text{ }P(y|x, \theta). 
+\end{equation*} \\
+\textbf{Идея:} выбирать $x_i$, который в методе стохастического градиента привёл бы к наибольшему изменению модели. \\
+
+Для каждого $u \in X^k$ и $y \in Y$ оценим длину градиентного шага в пространстве параметра $\theta$ при дообучении модели на $(u, y)$. Обозначим $\bigtriangledown_{\theta} \mathscr{L}(\theta; u, y)$ --- вектор градиента функции потерь. \\ \ \\
+\begin{itemize}
+	\item Принцип максимума ожидаемой длины градиента:
+	\begin{equation*}
+	x_i = \arg \underset{u \in X^k}{\max} \sum_{y \in Y} P(y|u, \theta) || \bigtriangledown_{\theta} \mathscr{L}(\theta; u, y ||.
+	\end{equation*}
+\end{itemize} 
+\end{frame}
+\begin{frame} \frametitle{Ожидаемое сокращение ошибки (expected error reduction)}
+\textbf{Идея:} выбирать $x_i$, который после дообучения даст выборке наиболее уверенную классификацию неразмеченной выборки $X^k$.
+
+Для каждого $u \in X^k$ и $y \in Y$ обучим модель, добавив к размеченной обучающей выборке $X^l$ пример $(u, y):$ 
+\begin{equation*}
+a_{uy}(x) = \arg \underset{z \in Y}{\max} P_{uy}(z|x).
+\end{equation*}
+Всего таких моделей: $|X^k| |Y|$.
+\begin{itemize}
+	\item Принцип максимума уверенности на неразмеченных данных:
+	\begin{equation*}
+	x_i = \arg \underset{u \in X^k}{\max} \sum_{y \in Y} P(y|u) \sum_{j = l+1}^{l+k} P_{uy}(a_{uy}(x_j)|x_j).
+	\end{equation*}
+	\item Принцип минимума энтропии неразмеченных данных:
+	\begin{equation*}
+	x_i = \arg \underset{u \in X^k}{\max} \sum_{y \in Y} P(y|u) \sum_{j = l+1}^{l+k} \sum_{z \in Y}P_{uy}(z|x_j) \log P_{uy}(z|x_j).
+	\end{equation*}
+\end{itemize}
+\end{frame}
+\begin{frame} \frametitle{Сокращение дисперсии (Variance reduction)}
+\textbf{Идея:} выбирать $x_i$, который после дообучения модели даст наименьшую оценку дисперсии предсказания.\\
+Для примера рассмотрим линейную регрессию: $Y = \mathrm{X}B + \mathcal{E}$, $Y \in \mathbb{R}^n$, $B \in \mathbb{R}^m$, $\mathrm{X} \in \mathbb{R}^{n \times m},$ $\mathcal{E} = (\epsilon_1, \dots, \epsilon_n)^{\mathrm{T}} \in \mathbb{R}^n$, $\forall i$ $\mathbb{E}\epsilon_i = 0,$ $\mathbb{D}\epsilon_i = \sigma^2,$ $\epsilon_i$ --- независимы. \\ \ \\
+Знаем: $\mathbb{D}\hat{Y_j} = \mathbb{D}(X_j^{\mathrm{T}}\hat{B} + \mathcal{E}) = \sigma^2 + \frac{\sigma^2}{n} + \frac{\sigma^2}{n}(Z - \bar{X})^{\mathrm{T}} \mathrm{S}_{xx}^{-1}(Z_j - \bar{X})$, где $X_j = (1, Z_j), $ --- вектор $j$--го индивида, $\mathrm{S}_{xx}$ --- <<выборочная ковариационная матрица>> центрированных данных, $\bar{X}$ --- вектор средних. Тогда:
+\\ \ \\
+$$x_i = \arg \underset{u \in X^k}{\min} \mathbb{D}\hat{Y_j}. $$
+	\\
+\end{frame}
+\end{document}

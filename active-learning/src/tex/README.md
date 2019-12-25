@@ -1,0 +1,1 @@
+Для сборки слайдов презентации потребуется тема "StatMod" [link](http://statmod.ru/wiki/latex:slides).
