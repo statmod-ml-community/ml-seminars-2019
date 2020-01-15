@@ -100,131 +100,51 @@ f^{\ast}(X)+\varepsilon,
 \begin{equation*}
 \hat{Y}
 =
-\hat{f}(X, \theta),
+f(X, \hat{\theta}),
 \end{equation*}
-где $\hat{f}$ --- оценка $f^{\ast}$, $\theta$ --- вектор параметров оценки, $\hat{Y}$ --- предсказанное значение $Y$.
+где $f$ --- вид функции, которой приближаем зависимость $f^{\ast}$, $\hat{\theta}$ --- вектор параметров оценки, $\hat{Y}$ --- предсказанное значение $Y$.
 
-Когда целью является предсказание, нам не важна точная форма функции $\hat{f}$, если она обеспечивает точные предсказания $Y$.
+Когда целью является предсказание, нам не важна точная форма функции $f(X, \hat{\theta})$, если она обеспечивает точные предсказания $Y$.
 
 Пусть имеется выборка из $n$ отдельных наблюдений: $x_{1},\ldots,x_{n}$ для которых известны соответствующие значения отклика. Обозначим $x_{ij}$ --- значение $j$-го признака $i$-го наблюдения, $x_{i}=(x_{i1},\ldots,x_{ip})\tr$,  $y_{i}$ --- отклик у $i$-го наблюдения.
  
- Хотим найти такую функцию $\hat{f}$, что $y\approx\hat{f}(x)$ для любого наблюдения $(x,y)$.  
+ Хотим найти такую функцию $f$, что $y\approx f(x)$ для любого наблюдения $(x,y)$.  
  Совокупность $X_{n}$ пар $(x_{1}, y_{1}),\ldots, (x_{n},y_{n})$, которая участвует в оценке функции $f^{\ast}$, называется обучающей выборкой.
  Выборка $X_{k}^{\prime}=(x_{i}^{\prime},y_{i}^{\prime})_{i=1}^{k}$, не участвующая в оценке функции $f^{\ast}$, называется тестовой (или контрольной).
 
 {\bf Вероятностная постановка задачи:} $Y \sim Ber(\sigma(X))$ при классификации на два класса и $Y \sim Mult(\mathbf{\sigma}(X))$, где $\mathbf{\sigma}(X) = (\sigma_1(X), \ldots, \sigma_K(X))$ при классификации на $K$ классов. Задача --- построить оценку $\hat{\sigma} = \hat{\sigma}(X, \theta)$ параметра $\sigma$. Предсказание $\hat{Y} = \text{argmax}_k \ \sigma_k(X)$.
 %--------------------------------------------------------------------------------------
 
+\section{Линейный классификатор}
+Пусть $f_j:X\to\mathbb{R},~j=1,\ldots,p$. Линейная модель классификации: 
+ \begin{equation*}
+ f(x,\theta)=\sign (\theta_0 + \sum\limits_{j=1}^p\theta_jf_j(x)).
+ \end{equation*}
+
+Если добавить к признакам единицу и положить $f_j(x) = x$, получаем
+\[
+f(x, \theta) = \sign \langle x, \theta \rangle.
+\]
+
 \section{Функция риска}
 
-Для оценки качества предсказания необходимо ввести функционал качества. Для этого сначала введём функцию потерь.
+Для оценки качества предсказания необходимо ввести функционал качества. Для этого сначала введём отступ и функцию потерь.
+
 \begin{definition}
-	Функция потерь (loss function) $L((x, y), \theta)$ --- неотрицательная функция, характеризующая величину ошибки предсказания на объекте $x$. 
+Отступ $\mathsf{M=\langle \theta,x \rangle y}$ --- <<расстояние>> между реальным значением и предсказанным.
 \end{definition}
 
-Для задачи классификации в качестве функции потерь обычно используется индикатор ошибки $L((x, y), \theta) = \delta(y, \hat{f}(x, \theta))$.
+\begin{definition}
+	Функция потерь (loss function) $L(M)$ --- неотрицательная функция, характеризующая величину ошибки предсказания на объекте $x$. 
+\end{definition}
+
+Для задачи классификации в качестве функции потерь обычно используется индикатор ошибки $L(M) = \sign(M)$.
 
 Теперь определим эмпирический риск --- функционал, который используется для оценки качества предсказания.
 
 \begin{definition}
-	Эмпирический риск $Q(X_n, \theta) = \displaystyle\frac{1}{n}\displaystyle\sum_{i=1}^{n} L((x_i, y_i), \theta)$
+	Эмпирический риск $Q(X_n, \theta) = \displaystyle\frac{1}{n}\displaystyle\sum_{i=1}^{n} L(M_i)$
 \end{definition}
-
-
-
-%Введём несколько обозначений:
-%\begin{itemize}
-%\item $\mathsf{f(x,\theta)}$ --- разделяющая (дискриминантная) функция, $\mathsf{\theta}\in\mathbb{R}^\mathsf{p}$.
-%
-%\item $\mathsf{a(x,\theta)=\sign f(x,\theta)}$ --- классификатор.
-%
-%\item $\mathsf{f(x,\theta)}=0$ --- разделяющая поверхность.
-%
-%\item $\mathsf{M_i(\theta)=y_if(x_i,\theta)}$ --- {\bf отступ} объекта $\mathsf{x_i}$. 
-%
-%\item Если $\mathsf{M_i(\theta)<0},$ то классификатор ошибается на $\mathsf{x_i}$.
-%
-%\end{itemize}
-
-%\begin{task}
-%	$Q(\theta)=\sum \limits_{i=1}^n {[M_i(\theta)<0]} \le \tilde Q(\theta)=\sum \limits_{i=1}^n \mathcal{L}(M_i(\theta)) \to \min \limits_{\theta}$
-%\end{task}
-%{\bf Метод:} метод стохастического градиента.
-%\begin{figure}[h]
-%	\begin{center}
-%		\begin{minipage}[h]{0.55\linewidth}
-%			\includegraphics[width=1\linewidth]{Margins}
-%			\caption{}
-%			\label{series_IRLS} %% метка рисунка для ссылки на него
-%		\end{minipage}
-%	\end{center}
-%\end{figure}
-
-
-
-%	\section{Примеры функции потерь}
-%	\begin{itemize}
-%	\item Пороговая функция потерь: $\mathsf{[M_i(\theta)<0]}$
-%	\item Логарифмическая: $\mathsf{\log_2 (1+e^{-M_i(\theta)})}$
-%	\item Экспоненциальная: $\mathsf{e^{-M_i(\theta)}}$
-%	\item Кусочно-линейная: $\mathsf{(1-M_i(\theta))_{+}}$
-%	\item Квадратичная: $\mathsf{(1-M_i(\theta))^2}$ 
-%
-%	 \end{itemize}
-%\begin{figure}[h]
-%	\begin{center}
-%		\begin{minipage}[h]{0.9\linewidth}
-%			\includegraphics[width=1\linewidth]{lossfunc}
-%			\caption{Примеры функции потерь $\mathcal{L}(M)$}
-%			\label{series_IRLS} %% метка рисунка для ссылки на него
-%		\end{minipage}
-%	\end{center}
-%\end{figure}
-
-
-
-
-
-%\section{Линейный классификатор}
-%$\mathsf{f_j:X\to\mathbb{R},~j=1,\ldots,p}$
-%Линейная модель классификации: 
-% \begin{equation*}
-% \mathsf{a(x,\theta)=\sign (\sum\limits_{j=1}^p\theta_jf_j(x)-\theta_0),~~~\theta_0,\theta_1,\ldots,\theta_p\in\mathbb{R}}.
-% \end{equation*}
-% Пусть $\mathsf{f_0=-1}$, тогда
-% \begin{equation*}
-% \mathsf{a(x,\theta)=\sign\langle \theta,x\rangle ,~ x,\theta\in\mathbb{R}^{p+1}}.
-% \end{equation*} 
-% $\mathsf{M_i(x)=y_i\langle \theta,x_i\rangle}$ --- отступ объекта $\mathsf{x_i}$. 
-% 
-% \begin{task}
-%$\mathsf{Q(\theta)=\sum \limits_{i=1}^n [y_i\langle \theta,x_i\rangle <0] \le \sum \limits_{i=1}^n \mathcal{L}(y_i\langle \theta,x_i\rangle) \to \min \limits_{\theta}}$
-% \end{task}
-%Проверка по тестовой выборке $\tilde{\mathbb{X}}_\mathsf{k}=\mathsf{(\tilde{x}_i,\tilde{y}_i)_{i=1}^k}$:
-%\begin{equation*}
-%\mathsf{\bar{Q}(\theta)=\frac{1}{k}\sum\limits_{i=1}^k [\tilde{y}_i\langle \theta,\tilde{x}_i\rangle <0]}
-%\end{equation*}
-
-
-
-%\section{Решение задачи оптимизации}
-%Для решения задачи оптимизации используется {\bf метод стохастического градиента}.
-%
-%Вход: $X_n=\mathsf{(x_i,y_i)_{i=1}^n, h, \lambda}$
-%Выход: $\mathsf{\theta}$
-%\begin{enumerate}
-%	\item Инициализация $\mathsf{\theta_j,~ j=0,\ldots,p}$
-%	\item Инициализация $\mathsf{\bar{Q}(\theta)}$
-%	\item {Повторять
-%		\begin{enumerate}
-%			\item Выбор $\mathsf{x_i}$ из $X_n$ случайным образом
-%			\item Вычисление $\mathsf{\varepsilon_i := \mathcal{L}_i(\theta)}$
-%			\item Градиентный шаг $\mathsf{\theta:=\theta-h\nabla\mathcal{L}_i(\theta) }$
-%			\item Вычисление $\mathsf{\bar{Q}(\theta):=\lambda\varepsilon_i+(1-\lambda)\bar{Q}(\theta)}$
-%		\end{enumerate} 
-%	пока $\mathsf{\bar{Q}(\theta)}$ или $\mathsf{\theta}$ не сойдутся
-%	}
-%\end{enumerate}
 
 
 \section{Регуляризация}
@@ -232,63 +152,63 @@ f^{\ast}(X)+\varepsilon,
 \begin{itemize}
 \item Признаков намного больше, чем объектов
 \item Мультиколлинеарность признаков: \\
-Пусть $\hat{f}(x,\theta)=\sign (\theta_1f_1(x)+\theta_2f_2(x)-\theta_0)$, $f_2(x)=kf_1(x)$. \\ Тогда $\theta_1f_1(x)+\theta_2f_2(x)=(\theta_1+\beta)f_1(x)+(\theta_2-k\beta)f_2(x) \ \forall \beta$
+Пусть $f(x,\hat{\theta})=\sign (\theta_1f_1(x)+\theta_2f_2(x)-\theta_0)$, $f_2(x)=kf_1(x)$. \\ Тогда $\theta_1f_1(x)+\theta_2f_2(x)=(\theta_1+\beta)f_1(x)+(\theta_2-k\beta)f_2(x) \ \forall \beta$
 \end{itemize}
-Таким образом, очень много различных векторов дадут близкие значения функционала качества, но при этом коэффициенты могут существенно отличаться. Признаком такого явления может являться большая $\Arrowvert \theta \Arrowvert$. \\ 
+Таким образом, у оценки параметров большая дисперсия. Для уменьшения дисперсии можно добавить небольшое смещение, используя регуляризацию. \\ 
 {\bf Задача с регуляризацией:}
 	\[\widetilde{Q}(X_n, \theta)=Q(X_n, \theta)+\frac{\tau}{2}\Arrowvert \theta \Arrowvert ^2 \to \min \limits_\theta\]
 
 
-\section{Связь с принципом максимума правдоподобия}
-Рассмотрим {\bf модель}: пусть $\mathsf{Y}$ --- вероятностное пространство с плотностью $p(y|x, \theta)$, то есть $\mathcal{L}(Y)$ --- семейство распределений, зависящее от параметров $X$ и $\theta$.
-	
-Пусть $X_n = (x_i,y_i)_{i=1}^n$, и $y_i$ --- независимы, одинаково распределены. 
-	\begin{itemize}
-		\item {\bf Максимизация правдоподобия:}
-		\[\mathsf{L}(\theta;X_n)=\ln\prod\limits_{i=1}^n p(y_i| x_i, \theta)=\sum\limits_{i=1}^n \ln p(y_i|x_i, \theta) \to \max\limits_\theta.\]
-		
-		\item {\bf Минимизация аппроксимированного эмпирического риска:} 
-			\[\tilde{Q}(X_n, \theta)=\sum\limits_{i=1}^n L(x_i, y_i, \theta) \to \min\limits_\theta.\]
-		
-	\end{itemize}
-Эти задачи эквивалентны, если положить $-\ln p(y_i| x_i, \theta) = L(x_i, y_i, \theta)$. \\
-{\bf Пример:} 
-\begin{itemize}
-\item $p(y| x, \theta)=\frac{1}{1+\exp(- y\langle x,\theta \rangle )}$ --- сигмоидная функция.
-\item $L(x, y, \theta)=\log (1+exp(-y\langle x,\theta \rangle))$ ---  логарифмическая функция потерь.
-\end{itemize}
-
-{\bf Принцип максимума правдоподобия:}
-Пусть $\theta \sim p(\theta; \gamma)$.
-\begin{equation*}
-\mathsf{L}(X_n, \theta)=\sum\limits_{i=1}^n p(y_i|x_i, \theta)+\underbrace{\ln p(\theta;\gamma)}_{\text{регуляризатор}} \to \max\limits_{\theta,\gamma}
-\end{equation*}
-{\bf Примеры:} \begin{enumerate}
-\item {\bf Гауссовский регуляризатор}: \[\mathsf{p(\theta;\sigma)=\frac{1}{(2\pi\sigma)^{p/2}}\exp{-\frac{\Arrowvert \theta \Arrowvert ^2}{2\sigma}}},\] тогда \[-\ln \mathsf{p(\theta;\sigma)=\frac{1}{2\sigma}\Arrowvert \theta \Arrowvert ^2+\text{const}~~(\tau=1/\sigma)}\]
-\item {\bf Регуляризатор Лапласа} (приводит к отбору признаков): \[\mathsf{p(\theta;C)=\frac{1}{(2C)^{p}}\exp{-\frac{\Arrowvert \theta \Arrowvert _1}{C}}},\] тогда \[-\ln \mathsf{p(\theta;C)=\frac{1}{C}\sum\limits_{j=1}^p|\theta_j|+\text{const}~~(\tau=1/C)}\]
-\end{enumerate}
-
-
-\section{Регуляризатор Лапласа. Отбор признаков}
-Задача: \[Q(X_n, \theta)=\sum\limits_{i=1}^n \ln p(y_i| x_i, \theta)+\frac{1}{C}\sum\limits_{j=1}^p|\theta_j| \to \min\limits_{\theta,C}.\]
-Замена: \[\begin{cases} \mathsf{u_j=\frac{1}{2}(|\theta_j|+\theta_j)} \\ \mathsf{v_j=\frac{1}{2}(|\theta_j|-\theta_j)} \end{cases},\] тогда \[\begin{cases} \mathsf{\theta_j=u_j-v_j} \\ \mathsf{|\theta_j|=u_j+v_j} \end{cases}\]
-\begin{equation*}
-\begin{cases}
-Q(\mathsf{u,v)=\sum \limits_{i=1}^n \mathcal{L}(M_i(u-v,\theta_0))+\frac{1}{C}\sum\limits_{j=1}^p (u_j+v_j) \to \min\limits_{u,v}} \\
-\mathsf{u_j\ge 0,~v_j\ge 0,~~ j=1,\ldots,p}
-\end{cases}
-\end{equation*}
-При уменьшении $\mathsf{C}$ (возрастании $\mathsf{\frac{1}{C}}$) обнуляются $\mathsf{u_j}$ и $\mathsf{v_j}$ для все большего количества $\mathsf{j}$, то есть $\mathsf{\theta_j=0}$ и признак не учитывается. 
-При $\mathsf{C\to 0}$ выбросим все признаки.
+%\section{Связь с принципом максимума правдоподобия}
+%Рассмотрим {\bf модель}: пусть $\mathsf{Y}$ --- вероятностное пространство с плотностью $p(y|x, \theta)$, то есть $\mathcal{L}(Y)$ --- семейство распределений, зависящее от параметров $X$ и $\theta$.
+%	
+%Пусть $X_n = (x_i,y_i)_{i=1}^n$, и $y_i$ --- независимы, одинаково распределены. 
+%	\begin{itemize}
+%		\item {\bf Максимизация правдоподобия:}
+%		\[\mathsf{L}(\theta;X_n)=\ln\prod\limits_{i=1}^n p(y_i| x_i, \theta)=\sum\limits_{i=1}^n \ln p(y_i|x_i, \theta) \to \max\limits_\theta.\]
+%		
+%		\item {\bf Минимизация аппроксимированного эмпирического риска:} 
+%			\[\tilde{Q}(X_n, \theta)=\sum\limits_{i=1}^n L(x_i, y_i, \theta) \to \min\limits_\theta.\]
+%		
+%	\end{itemize}
+%Эти задачи эквивалентны, если положить $-\ln p(y_i| x_i, \theta) = L(x_i, y_i, \theta)$. \\
+%{\bf Пример:} 
+%\begin{itemize}
+%\item $p(y| x, \theta)=\frac{1}{1+\exp(- y\langle x,\theta \rangle )}$ --- сигмоидная функция.
+%\item $L(x, y, \theta)=\log (1+\exp(-y\langle x,\theta \rangle))$ ---  логарифмическая функция потерь.
+%\end{itemize}
+%
+%{\bf Принцип максимума правдоподобия:}
+%Пусть $\theta \sim p(\theta; \gamma)$.
+%\begin{equation*}
+%\mathsf{L}(X_n, \theta)=\sum\limits_{i=1}^n p(y_i|x_i, \theta)+\underbrace{\ln p(\theta;\gamma)}_{\text{регуляризатор}} \to \max\limits_{\theta,\gamma}
+%\end{equation*}
+%{\bf Примеры:} \begin{enumerate}
+%\item {\bf Гауссовский регуляризатор}: \[\mathsf{p(\theta;\sigma)=\frac{1}{(2\pi\sigma)^{p/2}}\exp{-\frac{\Arrowvert \theta \Arrowvert ^2}{2\sigma}}},\] тогда \[-\ln \mathsf{p(\theta;\sigma)=\frac{1}{2\sigma}\Arrowvert \theta \Arrowvert ^2+\text{const}~~(\tau=1/\sigma)}\]
+%\item {\bf Регуляризатор Лапласа} (приводит к отбору признаков): \[\mathsf{p(\theta;C)=\frac{1}{(2C)^{p}}\exp{-\frac{\Arrowvert \theta \Arrowvert _1}{C}}},\] тогда \[-\ln \mathsf{p(\theta;C)=\frac{1}{C}\sum\limits_{j=1}^p|\theta_j|+\text{const}~~(\tau=1/C)}\]
+%\end{enumerate}
+%
+%
+%\section{Регуляризатор Лапласа. Отбор признаков}
+%Задача: \[Q(X_n, \theta)=\sum\limits_{i=1}^n \ln p(y_i| x_i, \theta)+\frac{1}{C}\sum\limits_{j=1}^p|\theta_j| \to \min\limits_{\theta,C}.\]
+%Замена: \[\begin{cases} \mathsf{u_j=\frac{1}{2}(|\theta_j|+\theta_j)} \\ \mathsf{v_j=\frac{1}{2}(|\theta_j|-\theta_j)} \end{cases},\] тогда \[\begin{cases} \mathsf{\theta_j=u_j-v_j} \\ \mathsf{|\theta_j|=u_j+v_j} \end{cases}\]
+%\begin{equation*}
+%\begin{cases}
+%Q(\mathsf{u,v)=\sum \limits_{i=1}^n \mathcal{L}(M_i(u-v,\theta_0))+\frac{1}{C}\sum\limits_{j=1}^p (u_j+v_j) \to \min\limits_{u,v}} \\
+%\mathsf{u_j\ge 0,~v_j\ge 0,~~ j=1,\ldots,p}
+%\end{cases}
+%\end{equation*}
+%При уменьшении $\mathsf{C}$ (возрастании $\mathsf{\frac{1}{C}}$) обнуляются $\mathsf{u_j}$ и $\mathsf{v_j}$ для все большего количества $\mathsf{j}$, то есть $\mathsf{\theta_j=0}$ и признак не учитывается. 
+%При $\mathsf{C\to 0}$ выбросим все признаки.
 
 
 \section{Логистическая регрессия. Подход через минимизацию функции потерь}
 Линейная модель классификации: 
 \begin{itemize}
-\item $\mathsf{\hat{f}(x)=\sign \langle \theta,x\rangle,~~ x,\theta\in \mathbb{R}^p}$
-\item $\mathsf{M=\langle \theta,x \rangle y}$ --- отступ.
+\item $f(x, \theta)=\sign \langle \theta,x\rangle,~~ x,\theta\in \mathbb{R}^p$
+\item $M=\langle \theta,x \rangle y$ --- отступ.
 \end{itemize}
-В качестве аппроксимации пороговой функции потерь берется логарифмическая функция потерь $\mathcal{L}(\mathsf{M})=\log(1+e^{-\mathsf{M}}).$
+В качестве аппроксимации пороговой функции потерь берется логарифмическая функция потерь $L(M)=\log(1+e^{-M}).$
 %\begin{task}
 %	$\mathsf{Q(\theta)=\sum \limits_{i=1}^n (1+\exp{(-y_i\langle \theta,x_i\rangle)}) \to \min \limits_{\theta}}$
 %\end{task}
@@ -312,7 +232,7 @@ $\mathsf{Q(X_n, \theta)=\sum \limits_{i=1}^n \log (1+\exp{(-y_i\langle \theta,x_
 
 
 \section{Логистическая регрессия. Вероятностный подход}
-$\mathsf{P(y|x,\theta)=\sigma_\theta(M)=\frac{1}{1+e^{-\langle x,\theta \rangle y}}}$ --- сигмоидная функция. \\
+$\mathsf{P(y = 1|x,\theta)=\sigma_\theta(M)=\frac{1}{1+e^{-\langle x,\theta \rangle y}}}$ --- сигмоидная функция. \\
 Свойства $\mathsf{\sigma(z)}$:
 \begin{itemize}
 	\item $\mathsf{\sigma(z)} \in [0,1]$ , задана на $(-\infty,+\infty)$
